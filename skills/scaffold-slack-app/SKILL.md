@@ -207,7 +207,266 @@ Only include rows for scopes that actually appear in `bot_scopes`. The filtered 
 
 ## 4. File templates
 
-[Filled in Task 7]
+Render each of the six templates by substituting `{{placeholders}}` from `answers` and `manifest_data`. Use the `Write` tool to write each file to the current directory.
+
+Substitution rules:
+- `{{name}}` → `answers.identity.name`
+- `{{description}}` → `answers.identity.description`
+- `{{bot_user_handle}}` → `answers.identity.bot_user_handle`
+- `{{package_name}}` → `answers.identity.bot_user_handle` (already normalized lowercase, no spaces)
+- `{{manifest_json}}` → `JSON.stringify(manifest_data, null, 2)` — render with the omission rules from section 3.3 applied
+- `{{handler_stubs}}` → concatenation of the per-capability code blocks listed in template 4 below
+- `{{scope_table_rows}}` → markdown table rows from the filtered `scope_justifications` (section 3.4)
+- `{{setup_step_extras}}` → conditional steps (slash commands UI, distribution UI) listed in template 6
+
+### Template 1 — `manifest.json`
+
+Write the file `manifest.json` with the contents of `{{manifest_json}}`. (The value is the pretty-printed JSON of `manifest_data` with the section 3.3 omission rules applied.)
+
+### Template 2 — `package.json`
+
+````json
+{
+  "name": "{{package_name}}",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch app.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@slack/bolt": "^4.0.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
+````
+
+### Template 3 — `tsconfig.json`
+
+````json
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "outDir": "dist"
+  },
+  "include": ["app.ts"]
+}
+````
+
+### Template 4 — `app.ts`
+
+The template has a fixed prelude and a fixed startup block, with `{{handler_stubs}}` between them. Build `{{handler_stubs}}` by concatenating only the stubs whose capability the user enabled.
+
+**Prelude (always emitted):**
+
+````typescript
+import "dotenv/config";
+import bolt from "@slack/bolt";
+
+const { App } = bolt;
+
+const app = new App({
+  token: process.env.SLACK_BOT_TOKEN,
+  appToken: process.env.SLACK_APP_TOKEN,
+  socketMode: true,
+});
+````
+
+**Mention stub (emit if `answers.mentions === true`):**
+
+````typescript
+app.event("app_mention", async ({ event, say }) => {
+  await say({
+    thread_ts: event.ts,
+    text: `Hi <@${event.user}>! I'm {{bot_user_handle}}. Replace this stub in app.ts.`,
+  });
+});
+````
+
+**DM stub (emit if `answers.dms === true`):**
+
+````typescript
+app.message(async ({ message, say }) => {
+  if (message.channel_type !== "im" || message.subtype) return;
+  await say(`Got your DM. Replace this stub in app.ts to add real logic.`);
+});
+````
+
+**Slash-command stubs (emit one per command in `answers.slash_commands`):**
+
+For each `cmd` (e.g., `/foo`):
+
+````typescript
+app.command("{{cmd}}", async ({ ack, respond }) => {
+  await ack();
+  await respond(`{{cmd}} received. Replace this stub in app.ts.`);
+});
+````
+
+**Startup block (always emitted, last):**
+
+````typescript
+const port = Number(process.env.PORT ?? 3000);
+await app.start(port);
+console.log(`⚡️ {{name}} is running (Socket Mode)`);
+````
+
+### Template 5 — `.env.example` and `.gitignore`
+
+Two files. Write both.
+
+`.env.example`:
+
+```
+SLACK_BOT_TOKEN=xoxb-replace-me
+SLACK_APP_TOKEN=xapp-replace-me
+```
+
+`.gitignore` (only write this if it does not already exist; if it does exist, append the lines below that are missing):
+
+```
+.env
+node_modules/
+dist/
+.DS_Store
+```
+
+### Template 6 — `SETUP.md`
+
+The template branches on `answers.audience` for the admin-request copy and on `answers.slash_commands.length > 0` for an extra setup step.
+
+````markdown
+# {{name}} — Setup
+
+## What this app does
+
+{{description}}
+
+## Scopes requested and why
+
+| Scope | What it allows | Why this app needs it |
+| --- | --- | --- |
+{{scope_table_rows}}
+
+## Workspace-admin request
+
+[INTERNAL_BRANCH — emit when audience === "internal":]
+
+> Hi! I'd like to install a Slack app called **{{name}}** in our workspace.
+>
+> **What it does:** {{description}}
+>
+> **Scopes requested:** see the table below.
+>
+> The app's manifest is in the attached `manifest.json`. To install:
+> 1. Go to <https://api.slack.com/apps> → **Create New App** → **From a manifest**.
+> 2. Pick our workspace, paste the manifest, click **Create**.
+> 3. Click **Settings → Install App → Install to Workspace** and approve the scopes.
+> 4. Send me back the **Bot User OAuth Token** (starts with `xoxb-`).
+>
+> Happy to walk through it together if useful.
+
+[DISTRIBUTABLE_BRANCH — emit when audience === "distributable":]
+
+> This app is set up for distribution to multiple workspaces. To list it publicly:
+> 1. Go to <https://api.slack.com/apps> → your app → **Settings → Manage Distribution**.
+> 2. Complete the checklist (icon, support email, etc.) and submit for review.
+> 3. Slack's review process typically takes several business days.
+>
+> For per-workspace installs by individual admins, the same admin-request flow above applies — just direct admins to your hosted install URL once available.
+
+## Setup steps
+
+### 1. Create the app from the manifest
+
+1. Go to <https://api.slack.com/apps> and click **Create New App**.
+2. Choose **From a manifest** → select your workspace.
+3. Paste the contents of `manifest.json` and click **Next** → **Create**.
+
+### 2. Install the app to your workspace
+
+1. In the left sidebar, click **Settings → Install App**.
+2. Click **Install to Workspace** and approve the scopes.
+3. (For internal workspace bots: if you are not an admin, your admin must do this step after they approve your request.)
+
+### 3. Get your bot token (`SLACK_BOT_TOKEN`)
+
+1. After install, the **Install App** page shows a **Bot User OAuth Token** starting with `xoxb-`.
+2. Copy it and paste into `.env` as `SLACK_BOT_TOKEN=xoxb-...`.
+
+### 4. Get your app-level token (`SLACK_APP_TOKEN`) — required for Socket Mode
+
+1. In the left sidebar, click **Settings → Basic Information**.
+2. Scroll down to **App-Level Tokens** and click **Generate Token and Scopes**.
+3. Name it (e.g., `socket-mode`), click **Add Scope**, add `connections:write`.
+4. Click **Generate**. Copy the token starting with `xapp-`.
+5. Paste into `.env` as `SLACK_APP_TOKEN=xapp-...`.
+
+### 5. Enable Socket Mode
+
+1. In the left sidebar, click **Settings → Socket Mode**.
+2. Toggle **Enable Socket Mode** on.
+   (The manifest already declares this, but the toggle must be flipped in the UI for the connection to accept your app token.)
+
+{{setup_step_extras}}
+
+### Final — Run the bot
+
+```
+cp .env.example .env
+# fill in the two tokens
+pnpm install
+pnpm dev
+```
+
+---
+
+> Slack dashboard labels can shift over time. If a path here is stale, the canonical reference is <https://api.slack.com/authentication/token-types>.
+````
+
+**`{{setup_step_extras}}` rules** (concatenate in this order, omitting any whose condition is false):
+
+If `answers.slash_commands.length > 0`:
+
+````markdown
+### 6. Edit slash command metadata (optional)
+
+1. In the left sidebar, click **Features → Slash Commands**.
+2. For each command, click the pencil icon and fill in **Short Description** and **Usage Hint** (the manifest leaves these as placeholders).
+````
+
+If `answers.audience === "distributable"`:
+
+````markdown
+### 7. Set up public distribution (optional)
+
+1. In the left sidebar, click **Settings → Manage Distribution**.
+2. Complete the checklist (icon, support email, OAuth redirect URLs).
+3. Submit for review when ready.
+````
 
 ---
 
