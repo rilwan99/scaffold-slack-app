@@ -1,0 +1,10 @@
+{
+  "name": "scaffold-slack-app",
+  "version": "0.1.0",
+  "description": "Scaffold a TypeScript Slack Bolt app (Socket Mode) from a short interview, including manifest, code stubs, and a SETUP.md with admin-request copy and exact dashboard navigation.",
+  "author": {
+    "name": "rilwan"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/rilwan/scaffold-slack-app"
+}
