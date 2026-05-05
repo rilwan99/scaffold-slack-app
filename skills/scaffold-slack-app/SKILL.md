@@ -35,10 +35,13 @@ Run `ls -A` in the current directory. Treat the directory as **empty enough** if
 
 - If empty enough: proceed silently.
 - If there are other entries: list them to the user and ask:
-  > "This directory contains existing files: `<list>`. The skill will write `manifest.json`, `package.json`, `tsconfig.json`, `app.ts`, `.env.example`, `.gitignore`, and `SETUP.md` here, overwriting any with the same names. Continue? (yes/no)"
+  > "This directory contains existing files: `{{list}}`. The skill will write `manifest.json`, `package.json`, `tsconfig.json`, `app.ts`, `.env.example`, `.gitignore`, and `SETUP.md` here, overwriting any with the same names. Continue? (yes/no)"
   - If `no`: stop. Tell the user to re-run from an empty directory.
   - If `yes`: proceed.
-- If the directory contains more than 20 entries OR the absolute path resolves to the user's home (`$HOME`): require explicit confirmation regardless of contents. Same yes/no prompt.
+- To check the home-directory case, run `pwd` and compare against `$HOME`. If the directory contains more than 20 entries OR the absolute path equals `$HOME`: require explicit confirmation with this distinct prompt:
+  > "This looks like a busy directory (`{{path}}` with `{{count}}` entries) — running the scaffold here is unusual. Continue? (yes/no)"
+  - If `no`: stop.
+  - If `yes`: proceed.
 
 ### 1.2 — Git preflight
 
@@ -47,7 +50,7 @@ Check whether `.git/` exists in the current directory.
 - If it exists: proceed silently.
 - If it does not exist: ask:
   > "Initialize a git repository here? (yes/no, default yes)"
-  - If `yes` or empty answer: run `git init -b main` after the interview, before writing files (so the first commit can include the generated files in a follow-up). Do NOT run `git init` yet.
+  - If `yes` or empty answer: remember this decision. The actual `git init -b main` runs in section 5.1, after all files are written.
   - If `no`: skip git init entirely.
 
 ### 1.3 — pnpm check (non-blocking)
