@@ -20,7 +20,7 @@ Use this skill at the very start of a new Slack bot project, when the user has j
 1. Run preconditions check.
 2. Conduct the interview (5 questions, asked one at a time).
 3. Apply the answer→manifest mapping rules.
-4. Write the six generated files into the current directory using the templates below.
+4. Write the seven generated files into the current directory using the templates below.
 5. Print the post-generation summary.
 
 ---
@@ -31,17 +31,17 @@ Before asking any interview questions, perform these checks:
 
 ### 1.1 — Working directory check
 
-Run `ls -A` in the current directory. Treat the directory as **empty enough** if the only entries are any subset of: `.git`, `.gitignore`, `.DS_Store`.
+Run `ls -A` in the current directory and `pwd && echo $HOME` to capture the path and home directory. Then route to ONE of these branches (in order — first match wins):
 
-- If empty enough: proceed silently.
-- If there are other entries: list them to the user and ask:
-  > "This directory contains existing files: `{{list}}`. The skill will write `manifest.json`, `package.json`, `tsconfig.json`, `app.ts`, `.env.example`, `.gitignore`, and `SETUP.md` here, overwriting any with the same names. Continue? (yes/no)"
-  - If `no`: stop. Tell the user to re-run from an empty directory.
-  - If `yes`: proceed.
-- To check the home-directory case, run `pwd` and compare against `$HOME`. If the directory contains more than 20 entries OR the absolute path equals `$HOME`: require explicit confirmation with this distinct prompt:
+- **Busy or home directory** — if the absolute path equals `$HOME` OR the entry count exceeds 20, ask:
   > "This looks like a busy directory (`{{path}}` with `{{count}}` entries) — running the scaffold here is unusual. Continue? (yes/no)"
   - If `no`: stop.
   - If `yes`: proceed.
+- **Non-empty (small)** — if the directory has entries beyond the allowlist `.git`, `.gitignore`, `.DS_Store`, ask:
+  > "This directory contains existing files: `{{list}}`. The skill will write `manifest.json`, `package.json`, `tsconfig.json`, `app.ts`, `.env.example`, `.gitignore`, and `SETUP.md` here, overwriting any with the same names. Continue? (yes/no)"
+  - If `no`: stop. Tell the user to re-run from an empty directory.
+  - If `yes`: proceed.
+- **Empty enough** — only allowlisted entries (or none): proceed silently.
 
 ### 1.2 — Git preflight
 
@@ -207,7 +207,7 @@ Only include rows for scopes that actually appear in `bot_scopes`. The filtered 
 
 ## 4. File templates
 
-Render each of the six templates by substituting `{{placeholders}}` from `answers` and `manifest_data`. Use the `Write` tool to write each file to the current directory.
+Render the templates below by substituting `{{placeholders}}` from `answers` and `manifest_data`. Use the `Write` tool to write each file to the current directory. There are six template sections that produce seven files (Template 5 produces two: `.env.example` and `.gitignore`).
 
 Substitution rules:
 - `{{name}}` → `answers.identity.name`
@@ -386,7 +386,7 @@ The template branches on `answers.audience` for the admin-request copy and on `a
 >
 > **What it does:** {{description}}
 >
-> **Scopes requested:** see the table below.
+> **Scopes requested:** see the table above.
 >
 > The app's manifest is in the attached `manifest.json`. To install:
 > 1. Go to <https://api.slack.com/apps> → **Create New App** → **From a manifest**.
@@ -403,7 +403,7 @@ The template branches on `answers.audience` for the admin-request copy and on `a
 > 2. Complete the checklist (icon, support email, etc.) and submit for review.
 > 3. Slack's review process typically takes several business days.
 >
-> For per-workspace installs by individual admins, the same admin-request flow above applies — just direct admins to your hosted install URL once available.
+> For per-workspace installs by individual admins, direct workspace admins to your hosted install URL once available.
 
 ## Setup steps
 
@@ -451,7 +451,7 @@ pnpm dev
 
 ---
 
-> Slack dashboard labels can shift over time. If a path here is stale, the canonical reference is <https://api.slack.com/authentication/token-types>.
+> Slack dashboard labels can shift over time. If a path here is stale, the canonical reference is <https://api.slack.com/start/overview>.
 ````
 
 **`{{setup_step_extras}}` rules** (concatenate in this order, omitting any whose condition is false):
@@ -479,7 +479,7 @@ If `answers.audience === "distributable"`:
 
 ## 5. Post-generation checklist
 
-After all six files are written:
+After all seven files are written:
 
 ### 5.1 — Run conditional follow-ups
 

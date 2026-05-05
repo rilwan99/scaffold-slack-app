@@ -51,7 +51,7 @@ Claude will pick up the trigger, walk you through five questions, and write the 
 - Sensitive scopes (`channels:history`, `groups:history`).
 - Languages other than TypeScript.
 
-These are deliberate v1 omissions. See `docs/superpowers/specs/` if you want the design rationale.
+These are deliberate v1 omissions to keep the skill small and focused.
 
 ## Manual smoke tests
 
