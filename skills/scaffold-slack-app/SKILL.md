@@ -83,7 +83,7 @@ If the bot_user_handle contains spaces or uppercase: normalize (lowercase, repla
 Ask:
 > "Is this app for a single internal workspace (admin-installed), or distributable to many workspaces? (`internal` / `distributable`, default `internal`)"
 
-Record as `answers.audience = "internal" | "distributable"`. Empty answer → `internal`.
+Record as `answers.audience = "internal" | "distributable"`. Empty answer → `internal`. Any other answer: clarify and re-ask.
 
 ### Q3 — Receives DMs
 
@@ -106,8 +106,7 @@ Ask:
 
 Parse the answer:
 - `no` / empty → `answers.slash_commands = []`.
-- Otherwise: split on `,`, trim each entry. For each entry:
-  - Strip leading whitespace.
+- Otherwise: split on `,`, strip leading and trailing whitespace from each token. For each entry:
   - If it doesn't start with `/`, prepend `/`.
   - If it contains internal whitespace (e.g., `/bar baz`): treat as malformed, skip it, and collect into a `malformed` list.
 - After parsing, if `malformed` is non-empty: echo back to the user:
