@@ -147,10 +147,10 @@ Apply each rule in order. Adding to a `Set` is idempotent (duplicates are silent
 | Condition | Action |
 |---|---|
 | Always | (nothing — baseline manifest below) |
-| `audience === "distributable"` | `org_deploy_enabled = true` |
-| `dms === true` | add `im:history`, `im:read`, `im:write`, `chat:write` to `bot_scopes`; add `message.im` to `bot_events` |
-| `mentions === true` | add `app_mentions:read`, `chat:write` to `bot_scopes`; add `app_mention` to `bot_events` |
-| For each `cmd` in `slash_commands` | add `commands` to `bot_scopes`; append `{ command: cmd, description: "TODO", usage_hint: "", should_escape: false }` to `slash_command_entries` |
+| `answers.audience === "distributable"` | `org_deploy_enabled = true` |
+| `answers.dms === true` | add `im:history`, `im:read`, `im:write`, `chat:write` to `bot_scopes`; add `message.im` to `bot_events` |
+| `answers.mentions === true` | add `app_mentions:read`, `chat:write` to `bot_scopes`; add `app_mention` to `bot_events` |
+| For each `cmd` in `answers.slash_commands` | add `commands` to `bot_scopes`; append `{ command: cmd, description: "TODO", usage_hint: "", should_escape: false }` to `slash_command_entries` |
 
 ### 3.3 — Final `manifest_data` shape
 
@@ -165,7 +165,7 @@ manifest_data = {
       display_name: answers.identity.bot_user_handle,
       always_online: true,
     },
-    slash_commands: slash_command_entries,   // omit key if empty
+    slash_commands: slash_command_entries,   // ⚠️ OMIT this key entirely when slash_command_entries === [] — Slack rejects an empty array
   },
   oauth_config: {
     scopes: {
@@ -174,7 +174,7 @@ manifest_data = {
   },
   settings: {
     event_subscriptions: {
-      bot_events: Array.from(bot_events).sort(),  // omit parent key if empty
+      bot_events: Array.from(bot_events).sort(),  // ⚠️ OMIT the entire `event_subscriptions` parent key when bot_events is empty
     },
     org_deploy_enabled: org_deploy_enabled,
     socket_mode_enabled: true,
@@ -201,7 +201,7 @@ Build a `scope_justifications` map for the SETUP.md scope table:
 | `im:read` | View basic info about DMs | Required alongside `im:history` |
 | `im:write` | Open DM conversations | The bot can DM users back |
 
-Only include rows for scopes that actually appear in `bot_scopes`.
+Only include rows for scopes that actually appear in `bot_scopes`. The filtered rows of this table become the value substituted into `{{scope_table_rows}}` in section 4.
 
 ---
 
