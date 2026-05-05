@@ -196,7 +196,7 @@ Build a `scope_justifications` map for the SETUP.md scope table:
 |---|---|---|
 | `app_mentions:read` | Receive `app_mention` events when users @mention the bot | The bot replies to @mentions |
 | `chat:write` | Post messages as the bot | The bot sends replies and messages |
-| `commands` | Receive slash command invocations | The bot handles `<comma-separated /commands>` |
+| `commands` | Receive slash command invocations | The bot handles the registered slash commands |
 | `im:history` | Read DM history with the bot | The bot processes DMs from users |
 | `im:read` | View basic info about DMs | Required alongside `im:history` |
 | `im:write` | Open DM conversations | The bot can DM users back |
@@ -218,6 +218,9 @@ Substitution rules:
 - `{{handler_stubs}}` → concatenation of the per-capability code blocks listed in template 4 below
 - `{{scope_table_rows}}` → markdown table rows from the filtered `scope_justifications` (section 3.4)
 - `{{setup_step_extras}}` → conditional steps (slash commands UI, distribution UI) listed in template 6
+- `{{cmd}}` → the current slash-command string (e.g., `/foo`); used only inside the per-command stub loop in template 4
+
+**Escaping rule:** When substituting `{{name}}`, `{{bot_user_handle}}`, or `{{cmd}}` into a TypeScript string or template literal, escape backticks (`` ` `` → `` \` ``) and backslashes (`\` → `\\`) to avoid breaking the generated code.
 
 ### Template 1 — `manifest.json`
 
@@ -239,13 +242,13 @@ Write the file `manifest.json` with the contents of `{{manifest_json}}`. (The va
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@slack/bolt": "^4.0.0",
-    "dotenv": "^16.4.0"
+    "@slack/bolt": "4.7.2",
+    "dotenv": "17.4.2"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.7.0"
+    "@types/node": "22.19.17",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3"
   }
 }
 ````
@@ -288,11 +291,13 @@ import bolt from "@slack/bolt";
 
 const { App } = bolt;
 
-const app = new App({
-  token: process.env.SLACK_BOT_TOKEN,
-  appToken: process.env.SLACK_APP_TOKEN,
-  socketMode: true,
-});
+const token = process.env["SLACK_BOT_TOKEN"];
+const appToken = process.env["SLACK_APP_TOKEN"];
+if (!token || !appToken) {
+  throw new Error("SLACK_BOT_TOKEN and SLACK_APP_TOKEN must be set in .env (see SETUP.md).");
+}
+
+const app = new App({ token, appToken, socketMode: true });
 ````
 
 **Mention stub (emit if `answers.mentions === true`):**
@@ -310,8 +315,9 @@ app.event("app_mention", async ({ event, say }) => {
 
 ````typescript
 app.message(async ({ message, say }) => {
-  if (message.channel_type !== "im" || message.subtype) return;
-  await say(`Got your DM. Replace this stub in app.ts to add real logic.`);
+  if (!("channel_type" in message) || message.channel_type !== "im") return;
+  if ("subtype" in message && message.subtype) return;
+  await say("Got your DM. Replace this stub in app.ts to add real logic.");
 });
 ````
 
@@ -329,8 +335,9 @@ app.command("{{cmd}}", async ({ ack, respond }) => {
 **Startup block (always emitted, last):**
 
 ````typescript
-const port = Number(process.env.PORT ?? 3000);
+const port = Number(process.env["PORT"] ?? 3000);
 await app.start(port);
+// Replace with your preferred logger before deploying.
 console.log(`⚡️ {{name}} is running (Socket Mode)`);
 ````
 
@@ -345,7 +352,7 @@ SLACK_BOT_TOKEN=xoxb-replace-me
 SLACK_APP_TOKEN=xapp-replace-me
 ```
 
-`.gitignore` (only write this if it does not already exist; if it does exist, append the lines below that are missing):
+`.gitignore` — use the `Read` tool to check whether the file already exists and what it contains. If absent, `Write` it with the lines below. If present, `Write` it with the existing content plus any of the lines below that are not already in it.
 
 ```
 .env
@@ -373,7 +380,7 @@ The template branches on `answers.audience` for the admin-request copy and on `a
 
 ## Workspace-admin request
 
-[INTERNAL_BRANCH — emit when audience === "internal":]
+<!-- INTERNAL ONLY: emit this block when audience === "internal", omit when "distributable". Strip these HTML comments from the output. -->
 
 > Hi! I'd like to install a Slack app called **{{name}}** in our workspace.
 >
@@ -389,7 +396,7 @@ The template branches on `answers.audience` for the admin-request copy and on `a
 >
 > Happy to walk through it together if useful.
 
-[DISTRIBUTABLE_BRANCH — emit when audience === "distributable":]
+<!-- DISTRIBUTABLE ONLY: emit this block when audience === "distributable", omit when "internal". Strip these HTML comments from the output. -->
 
 > This app is set up for distribution to multiple workspaces. To list it publicly:
 > 1. Go to <https://api.slack.com/apps> → your app → **Settings → Manage Distribution**.
