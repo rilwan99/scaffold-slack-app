@@ -27,7 +27,35 @@ Use this skill at the very start of a new Slack bot project, when the user has j
 
 ## 1. Preconditions
 
-[Filled in Task 4]
+Before asking any interview questions, perform these checks:
+
+### 1.1 — Working directory check
+
+Run `ls -A` in the current directory. Treat the directory as **empty enough** if the only entries are any subset of: `.git`, `.gitignore`, `.DS_Store`.
+
+- If empty enough: proceed silently.
+- If there are other entries: list them to the user and ask:
+  > "This directory contains existing files: `<list>`. The skill will write `manifest.json`, `package.json`, `tsconfig.json`, `app.ts`, `.env.example`, `.gitignore`, and `SETUP.md` here, overwriting any with the same names. Continue? (yes/no)"
+  - If `no`: stop. Tell the user to re-run from an empty directory.
+  - If `yes`: proceed.
+- If the directory contains more than 20 entries OR the absolute path resolves to the user's home (`$HOME`): require explicit confirmation regardless of contents. Same yes/no prompt.
+
+### 1.2 — Git preflight
+
+Check whether `.git/` exists in the current directory.
+
+- If it exists: proceed silently.
+- If it does not exist: ask:
+  > "Initialize a git repository here? (yes/no, default yes)"
+  - If `yes` or empty answer: run `git init -b main` after the interview, before writing files (so the first commit can include the generated files in a follow-up). Do NOT run `git init` yet.
+  - If `no`: skip git init entirely.
+
+### 1.3 — pnpm check (non-blocking)
+
+Run `command -v pnpm`. If it returns nothing, remember this — at the end, the post-generation summary will include a one-line install hint:
+> "pnpm not detected. Install it with `npm install -g pnpm` or `corepack enable` before running `pnpm install`."
+
+Do NOT block generation on this; the user can install pnpm later.
 
 ---
 
