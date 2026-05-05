@@ -479,4 +479,46 @@ If `answers.audience === "distributable"`:
 
 ## 5. Post-generation checklist
 
-[Filled in Task 8]
+After all six files are written:
+
+### 5.1 — Run conditional follow-ups
+
+- If the user said `yes` to git-init in section 1.2 and `.git/` does not exist: run `git init -b main`.
+- Do NOT run `pnpm install` automatically. The user runs it.
+
+### 5.2 — Print the chat summary
+
+Print exactly this template, substituting the bracketed values:
+
+```
+✅ Scaffolded {{name}} into the current directory.
+
+Files written:
+  - manifest.json       (Slack app manifest)
+  - package.json        (Node 22, pnpm)
+  - tsconfig.json       (strict TypeScript)
+  - app.ts              (Bolt handler stubs)
+  - .env.example        (token placeholders)
+  - .gitignore
+  - SETUP.md            ← read this next
+
+Next steps:
+  1. Open SETUP.md — it has the admin-request message and the exact dashboard
+     navigation for getting your tokens.
+  2. cp .env.example .env, fill in the two tokens.
+  3. pnpm install && pnpm dev
+```
+
+If pnpm was not detected in section 1.3, append:
+
+```
+
+  ⚠️ pnpm not detected. Install it with `npm install -g pnpm` or `corepack enable`.
+```
+
+If the user opted into git-init, append:
+
+```
+
+  ✓ Initialized a fresh git repo. Make your first commit when you're ready.
+```
