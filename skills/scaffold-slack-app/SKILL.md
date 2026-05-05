@@ -128,7 +128,80 @@ After Q5, if `answers.dms === false && answers.mentions === false && answers.sla
 
 ## 3. Generation rules (answer → manifest)
 
-[Filled in Task 6]
+Apply these rules to the `answers` object to derive a `manifest_data` object. The next section's templates consume `manifest_data`.
+
+### 3.1 — Derived sets
+
+Initialize:
+```
+bot_scopes = new Set()
+bot_events = new Set()
+slash_command_entries = []
+org_deploy_enabled = false
+```
+
+### 3.2 — Mapping table
+
+Apply each rule in order. Adding to a `Set` is idempotent (duplicates are silently deduped — this is how `chat:write` ends up listed once even when both DMs and Mentions add it).
+
+| Condition | Action |
+|---|---|
+| Always | (nothing — baseline manifest below) |
+| `audience === "distributable"` | `org_deploy_enabled = true` |
+| `dms === true` | add `im:history`, `im:read`, `im:write`, `chat:write` to `bot_scopes`; add `message.im` to `bot_events` |
+| `mentions === true` | add `app_mentions:read`, `chat:write` to `bot_scopes`; add `app_mention` to `bot_events` |
+| For each `cmd` in `slash_commands` | add `commands` to `bot_scopes`; append `{ command: cmd, description: "TODO", usage_hint: "", should_escape: false }` to `slash_command_entries` |
+
+### 3.3 — Final `manifest_data` shape
+
+```
+manifest_data = {
+  display_information: {
+    name: answers.identity.name,
+    description: answers.identity.description,
+  },
+  features: {
+    bot_user: {
+      display_name: answers.identity.bot_user_handle,
+      always_online: true,
+    },
+    slash_commands: slash_command_entries,   // omit key if empty
+  },
+  oauth_config: {
+    scopes: {
+      bot: Array.from(bot_scopes).sort(),
+    },
+  },
+  settings: {
+    event_subscriptions: {
+      bot_events: Array.from(bot_events).sort(),  // omit parent key if empty
+    },
+    org_deploy_enabled: org_deploy_enabled,
+    socket_mode_enabled: true,
+    token_rotation_enabled: false,
+  },
+}
+```
+
+**Omission rules** (to keep the manifest clean):
+- If `slash_command_entries` is empty, do not include the `features.slash_commands` key at all.
+- If `bot_events` is empty, do not include the `settings.event_subscriptions` key at all.
+- If `bot_scopes` is empty (the all-no path), include `oauth_config.scopes.bot: []`.
+
+### 3.4 — Derived data for SETUP.md
+
+Build a `scope_justifications` map for the SETUP.md scope table:
+
+| Scope | What it allows | Why this app needs it |
+|---|---|---|
+| `app_mentions:read` | Receive `app_mention` events when users @mention the bot | The bot replies to @mentions |
+| `chat:write` | Post messages as the bot | The bot sends replies and messages |
+| `commands` | Receive slash command invocations | The bot handles `<comma-separated /commands>` |
+| `im:history` | Read DM history with the bot | The bot processes DMs from users |
+| `im:read` | View basic info about DMs | Required alongside `im:history` |
+| `im:write` | Open DM conversations | The bot can DM users back |
+
+Only include rows for scopes that actually appear in `bot_scopes`.
 
 ---
 
