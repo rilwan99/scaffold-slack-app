@@ -64,7 +64,66 @@ Do NOT block generation on this; the user can install pnpm later.
 
 ## 2. Interview
 
-[Filled in Task 5]
+Ask these questions one at a time, in order. Wait for the user's answer before asking the next question. Hold the answers in conversation context as a JSON-shaped "answers" object — you'll use it in section 3.
+
+### Q1 — App identity
+
+Ask:
+> "Let's start with identity. I need three things:
+> 1. **App name** (e.g., `Acme Bot`) — shown in Slack's app directory and install dialog.
+> 2. **One-line description** (e.g., `Posts daily standup reminders`) — shown to admins approving the install.
+> 3. **Bot user handle** (e.g., `acmebot`) — the @-handle users type to mention the bot. Lowercase, no spaces."
+
+Record as `answers.identity = { name, description, bot_user_handle }`.
+
+If the bot_user_handle contains spaces or uppercase: normalize (lowercase, replace spaces with `-`) and echo the normalized value back to the user before continuing.
+
+### Q2 — Workspace audience
+
+Ask:
+> "Is this app for a single internal workspace (admin-installed), or distributable to many workspaces? (`internal` / `distributable`, default `internal`)"
+
+Record as `answers.audience = "internal" | "distributable"`. Empty answer → `internal`.
+
+### Q3 — Receives DMs
+
+Ask:
+> "Should users be able to DM the bot directly? (yes/no)"
+
+Record as `answers.dms = true | false`.
+
+### Q4 — Responds to @mentions
+
+Ask:
+> "Should the bot respond when users @mention it in channels? (yes/no)"
+
+Record as `answers.mentions = true | false`.
+
+### Q5 — Slash commands
+
+Ask:
+> "Any slash commands? If yes, list them comma-separated (e.g., `/foo, /bar`). If none, say `no`."
+
+Parse the answer:
+- `no` / empty → `answers.slash_commands = []`.
+- Otherwise: split on `,`, trim each entry. For each entry:
+  - Strip leading whitespace.
+  - If it doesn't start with `/`, prepend `/`.
+  - If it contains internal whitespace (e.g., `/bar baz`): treat as malformed, skip it, and collect into a `malformed` list.
+- After parsing, if `malformed` is non-empty: echo back to the user:
+  > "These entries look malformed (slash commands can't contain spaces): `<list>`. I'll skip them and use `<clean list>`. Continue? (yes/no)"
+  - If `no`: re-ask Q5.
+  - If `yes`: proceed with the clean list.
+
+Record as `answers.slash_commands = ["/foo", "/bar", ...]`.
+
+### Sanity gate — all-no answers
+
+After Q5, if `answers.dms === false && answers.mentions === false && answers.slash_commands.length === 0`:
+- Ask:
+  > "You answered no to DMs, mentions, and slash commands — this generates a bot that does nothing. Continue anyway? (yes/no)"
+  - If `no`: stop, do not generate. Suggest re-running.
+  - If `yes`: proceed with baseline-only manifest.
 
 ---
 
