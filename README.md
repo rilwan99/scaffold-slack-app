@@ -42,27 +42,6 @@ Claude will pick up the trigger, walk you through five questions, and write the 
 - `.env.example`, `.gitignore`.
 - `SETUP.md` — admin-request copy + scope justification table + numbered dashboard steps with exact navigation paths.
 
-## What v1 does NOT do
-
-- HTTP transport mode (Socket Mode only).
-- Re-runs / scope-drift detection.
-- Interactivity (modals, buttons, shortcuts).
-- App home, workflow steps, file handling.
-- Sensitive scopes (`channels:history`, `groups:history`).
-- Languages other than TypeScript.
-
-These are deliberate v1 omissions to keep the skill small and focused.
-
-## Manual smoke tests
-
-After making changes to `SKILL.md`, run these by hand in three throwaway directories:
-
-1. **all-yes:** answer yes to DMs, mentions, and slash commands `/standup, /skip`. Verify generated `manifest.json` matches `tests/smoke/all-yes/expected/manifest.json` and `pnpm install && pnpm typecheck` succeed.
-2. **mentions-only:** only mentions = yes. Verify generated manifest matches `tests/smoke/mentions-only/expected/manifest.json`.
-3. **all-no:** all capability questions = no, confirm the sanity gate fires, answer yes to proceed. Verify manifest matches `tests/smoke/all-no/expected/manifest.json`.
-
-Diff with `diff <(jq -S . manifest.json) <(jq -S . tests/smoke/<scenario>/expected/manifest.json)` to ignore key ordering.
-
 ## License
 
 MIT.
