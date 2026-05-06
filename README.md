@@ -11,7 +11,7 @@ Creating a Slack bot for a company workspace is friction-heavy: you have to know
 ### As a Claude Code plugin (recommended)
 
 ```
-/plugin marketplace add rilwan/scaffold-slack-app
+/plugin marketplace add rilwan99/scaffold-slack-app
 /plugin install scaffold-slack-app
 ```
 
@@ -20,7 +20,7 @@ Creating a Slack bot for a company workspace is friction-heavy: you have to know
 Copy `skills/scaffold-slack-app/` into your `~/.claude/skills/` directory:
 
 ```bash
-git clone https://github.com/rilwan/scaffold-slack-app
+git clone https://github.com/rilwan99/scaffold-slack-app
 cp -R scaffold-slack-app/skills/scaffold-slack-app ~/.claude/skills/
 ```
 
